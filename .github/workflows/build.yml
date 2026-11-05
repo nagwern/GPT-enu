@@ -17,10 +17,20 @@ jobs:
 
       - name: Unpack project from parts
         run: |
-          ls parts
+          mapfile -t FILES < <(find . -not -path "./.git/*" -iname "part-*.txt" | sort)
+          echo "Found ${#FILES[@]} part file(s):"
+          printf '%s\n' "${FILES[@]}"
+          if [ "${#FILES[@]}" -ne 6 ]; then
+            echo "::error::Expected exactly 6 part files (part-0.txt .. part-5.txt), found ${#FILES[@]}. Check the list above for duplicates, missing files, or wrong folders."
+            exit 1
+          fi
           mkdir -p proj
-          cat parts/part-*.txt | tr -d ' \r\n' | base64 -d | tar xJ -C proj
-          ls proj
+          cat "${FILES[@]}" | tr -d ' \r\n' | base64 -d > proj.txz
+          echo "Archive size:"
+          ls -la proj.txz
+          tar xJf proj.txz -C proj
+          echo "Unpacked project:"
+          find proj -maxdepth 2
 
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
